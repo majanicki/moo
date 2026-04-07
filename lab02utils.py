@@ -48,7 +48,44 @@ def harmonic_regression_prediction(datapoints, harmonic_order, period_len):
     return np.exp(reg.predict(px)), err
 
 
+def wsm_solve(risk_weight, expected_return, covariance_matrix, normalize = True):
+    n_factor_risk = 1.0
+    n_factor_return = 1.0
+    if normalize:
+        wreturn = wsm_solve(0.0, expected_return, covariance_matrix, normalize=False)
+        wrisk = wsm_solve(1.0, expected_return, covariance_matrix, normalize=False)
+        max_return, max_risk = evaluate_solution(wreturn, expected_return, covariance_matrix)
+        min_return, min_risk = evaluate_solution(wrisk, expected_return, covariance_matrix)
+        n_factor_return = 1 / (max_return - min_return)
+        n_factor_risk = 1 / (max_risk - min_risk)
+    n = len(expected_return)
+    Q = cvxopt.matrix(2 * risk_weight * n_factor_risk * covariance_matrix) # we have to flip for correct column layout I think
+    c = cvxopt.matrix((1 - risk_weight) * expected_return * -1 * n_factor_return)
+    b = cvxopt.matrix(1.0)
+    A = cvxopt.matrix(np.ones(shape=(1,n)))
 
+    G = cvxopt.matrix(-np.eye(n))
+    h = cvxopt.matrix(np.zeros(n))
+
+    sol = cvxopt.solvers.qp(Q, c, G, h, A, b)
+    weights = np.array(sol['x']).flatten()
+    return weights
+
+def ecm_solve(epsilon, expected_return, covariance_matrix):
+    n = len(expected_return)
+    Q = cvxopt.matrix(2 * covariance_matrix) # we have to flip for correct column layout I think
+    c = cvxopt.matrix(np.zeros(n))
+    b = cvxopt.matrix(1.0)
+    A = cvxopt.matrix(np.ones(shape=(1,n)))
+
+    G = cvxopt.matrix(np.vstack((-expected_return,-np.eye(n))))
+    h = np.zeros(n+1)
+    h[0] = -epsilon
+    h = cvxopt.matrix(h)
+
+    sol = cvxopt.solvers.qp(Q, c, G, h, A, b)
+    weights = np.array(sol['x']).flatten()
+    return weights
 
 def evaluate_solution(weights, expected_return, covariance_matrix):
     return np.sum(weights * (expected_return)), weights.T @ covariance_matrix @ weights
