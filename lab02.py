@@ -43,38 +43,35 @@ m = np.array(m)
 stocks_covariance = np.cov(m)
 stocks_expected_return = np.array(stocks_expected_return) - 1
 
-# pop_size = 250
-# generations = 100
-# n_samples = 100
-# wsm_x_returns = []
-# wsm_y_risks = []
-# wsm_solutions = []
-# for i in range(n_samples + 1):
-#     wcm_weight = 1 / n_samples * i
-#     w = wsm_solve(wcm_weight, stocks_expected_return, stocks_covariance)
-#     ereturn, risk = evaluate_solution(w, stocks_expected_return, stocks_covariance)
-#     wsm_x_returns.append(ereturn)
-#     wsm_y_risks.append(risk)
-#     wsm_solutions.append(w)
-# wsm_x_returns = np.array(wsm_x_returns)
+n_samples = 100
+wsm_x_returns = []
+wsm_y_risks = []
+wsm_solutions = []
+for i in range(n_samples + 1):
+    wcm_weight = 1 / n_samples * i
+    w = wsm_solve(wcm_weight, stocks_expected_return, stocks_covariance)
+    ereturn, risk = evaluate_solution(w, stocks_expected_return, stocks_covariance)
+    wsm_x_returns.append(ereturn)
+    wsm_y_risks.append(risk)
+    wsm_solutions.append(w)
+wsm_x_returns = np.array(wsm_x_returns)
 
 
-# threshold_step = (np.max(wsm_x_returns)-np.min(wsm_x_returns))/n_samples
-# ecm_x_returns = []
-# ecm_y_risks = []
-# ecm_solutions = []
-# for i in range(n_samples + 1):
-#     t = i * threshold_step + np.min(wsm_x_returns)
-#     w = ecm_solve(t, stocks_expected_return, stocks_covariance)
-#     ereturn, risk = evaluate_solution(w, stocks_expected_return, stocks_covariance)
-#     ecm_x_returns.append(ereturn)
-#     ecm_y_risks.append(risk)
-#     ecm_solutions.append(w)
-# plt.scatter(final_nsga_returns, final_nsga_risks, label="NSGAII", marker=".")
-# plt.scatter(ecm_x_returns, ecm_y_risks, label="ECM", marker=".", alpha=0.5)
-# plt.scatter(wsm_x_returns, wsm_y_risks, label="WSM", marker=".", alpha=0.5)
-# plt.legend()
-# plt.show()
+threshold_step = (np.max(wsm_x_returns)-np.min(wsm_x_returns))/(n_samples-1)
+ecm_x_returns = []
+ecm_y_risks = []
+ecm_solutions = []
+for i in range(n_samples):
+    t = i * threshold_step + np.min(wsm_x_returns)
+    w = ecm_solve(t, stocks_expected_return, stocks_covariance)
+    ereturn, risk = evaluate_solution(w, stocks_expected_return, stocks_covariance)
+    ecm_x_returns.append(ereturn)
+    ecm_y_risks.append(risk)
+    ecm_solutions.append(w)
+
+
+ideal_pareto_front = np.array(ecm_solutions)
 
 population_history = evolve(200, 100, stocks_expected_return, stocks_covariance, False)
-debug2d(population_history, stocks_expected_return, stocks_covariance)
+print(inverted_generational_distance(ideal_pareto_front, population_history[-1], stocks_expected_return, stocks_covariance))
+print(hypervolume(population_history[-1], (0.1,1.5), stocks_expected_return, stocks_covariance))
