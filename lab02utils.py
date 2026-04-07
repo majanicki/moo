@@ -98,6 +98,12 @@ def evaluate_population(population, stocks_expected_return, stocks_covariance):
     # ret = (ret - min_return) / (max_return - min_return)
     return np.column_stack((risk, -ret))
 
+def evaluate_population_3D(population, stocks_expected_return, stocks_covariance):
+    risk = np.sum((population @ stocks_covariance) * population, axis=1)
+    ret = np.sum(population * stocks_expected_return, axis=1)
+    non_diverse = np.sum(population > 0.01, axis=1)
+    return np.column_stack((risk, -ret, -non_diverse))
+
 def get_crowding_distance(front, input_criteria, norm_min, norm_max):
     criteria = (input_criteria - norm_min)/(norm_max - norm_min)
     n = len(front)
