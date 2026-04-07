@@ -59,7 +59,7 @@ def evaluate_population(population, stocks_expected_return, stocks_covariance):
     # risk = (risk - min_risk) / (max_risk - min_risk)
     ret = np.sum(population * stocks_expected_return, axis=1)
     # ret = (ret - min_return) / (max_return - min_return)
-    return np.column_stack((risk, ret))
+    return np.column_stack((risk, -ret))
 
 def get_crowding_distance(front, input_criteria, norm_min, norm_max):
     criteria = (input_criteria - norm_min)/(norm_max - norm_min)
@@ -86,10 +86,13 @@ def get_crowding_distance(front, input_criteria, norm_min, norm_max):
 
             
 def dominates(a, b):
-    return (
-        (a[0] <= b[0] and a[1] >= b[1]) and
-        (a[0] < b[0] or a[1] > b[1])
-    )
+    a = list(a)
+    b = list(b)
+
+    no_worse = all(x <= y for x, y in zip(a, b))
+    strictly_better = any(x < y for x, y in zip(a, b))
+
+    return no_worse and strictly_better
 
 def ngsa2_sort(population, criteria):
     order = []
@@ -128,42 +131,11 @@ def crossover(p1, p2):
     c2 = (1-alpha) * p1 + alpha * p2
     return c1, c2
 
-# def mutate(solution):
-#     c = copy(solution)
-#     candidate_indexes = []
-#     for i in range(len(c)):
-#         if c[i] > 0:
-#             candidate_indexes.append(i)
-#     index_to_zero = candidate_indexes[random.randint(0, len(candidate_indexes) - 1)]
-#     f = c[index_to_zero]
-#     c[index_to_zero] = 0
-#     i = random.randint(0, len(solution) - 2)
-#     while f > 0:
-#         i += 1
-#         to_distribute = random.uniform(f*0.4, f)
-#         index_to_distribute = (index_to_zero + i)%len(c)
-#         if index_to_distribute == index_to_zero:
-#             continue
-#         if c[index_to_distribute] + to_distribute <= 1.0:
-#             c[index_to_distribute] += to_distribute
-#             f -= to_distribute
-#     return c
 def mutate(solution):
     alpha = solution * 5
     alpha[alpha == 0] = 1e-3  # avoid zeros
     return np.random.dirichlet(alpha)
 
-
-# def roulette_wheel_selection(population, n_offspring):
-#     def parent_toss():
-#         return int(round(-math.log(random.random(), 1.15)))
-#     offspring = []
-#     for _ in range(n_offspring//2):
-#         p1, p2 = parent_toss(), parent_toss()
-#         c1, c2 = crossover(population[p1], population[p2])
-#         offspring.append(mutate(c1))
-#         offspring.append(mutate(c2))
-#     return np.array(offspring)
 def selection(population, n_offspring):
     offspring = []
     for _ in range(n_offspring//2):
