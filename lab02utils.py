@@ -7,6 +7,8 @@ import math
 import random
 from copy import copy
 cvxopt.solvers.options['show_progress'] = False
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.animation import FuncAnimation
 
 def load_stock_data(filename):
     with open(filename, "r") as file:
@@ -202,3 +204,81 @@ def get_random_population(count, weight_len):
     for _ in range(count):
         r.append(get_random_solution(weight_len))
     return np.array(r)
+
+
+
+
+
+def evolve(pop_size, generations, stocks_expected_return, stocks_covariance, three_dimensional):
+
+    evaluate_f = evaluate_population if not three_dimensional else evaluate_population_3D
+    population = get_random_population(pop_size, len(stocks_expected_return))
+    criteria = evaluate_f(population, stocks_expected_return, stocks_covariance)
+    population, front = ngsa2_sort(population, criteria)
+    population_history = [population]
+    for g in range(1, generations):
+
+        offspring = selection(population, int(pop_size * 0.2))
+        population = np.vstack((population, offspring))
+        criteria = evaluate_f(population, stocks_expected_return, stocks_covariance)
+        population, front = ngsa2_sort(population, criteria)
+        population = population[:pop_size]
+        print(g, criteria[front[0]])
+        population_history.append(population)
+
+    return population_history
+
+
+def debug2d(population_history, stocks_expected_return, stocks_covariance):
+    pareto_history_x = []
+    pareto_history_y = []
+    pareto_history_c = []
+    for g, population in enumerate(population_history):
+        criteria = evaluate_population(population, stocks_expected_return, stocks_covariance)
+        pareto_history_x += list(criteria[:, 1])
+        pareto_history_y += list(criteria[:, 0])
+        pareto_history_c += [g] * len(criteria[:, 0])
+    plt.scatter(-np.array(pareto_history_x), pareto_history_y, c=pareto_history_c)
+    plt.colorbar(label='Generation')
+    plt.xlabel('Return')
+    plt.ylabel('Risk')
+    plt.show()
+
+def debug3d(population_history, stocks_expected_return, stocks_covariance):
+    pareto_history_x = []
+    pareto_history_y = []
+    pareto_history_z = []
+    pareto_history_c = []
+    for g, population in enumerate(population_history):
+        criteria = evaluate_population_3D(population, stocks_expected_return, stocks_covariance)
+        pareto_history_x += list(criteria[:, 1])
+        pareto_history_y += list(criteria[:, 0])
+        pareto_history_z += list(criteria[:, 2])
+        pareto_history_c += [g] * len(criteria[:, 0])
+    x = -np.array(pareto_history_x)
+    y = np.array(pareto_history_y)
+    z = -np.array(pareto_history_z)
+    c = np.array(pareto_history_c)
+
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection='3d')
+
+    sc = ax.scatter([], [], [], s=20, alpha=0.7, c=[], cmap='viridis')
+    ax.set_xlabel('Return')
+    ax.set_ylabel('Risk')
+    ax.set_zlabel('Number of significant weights')
+    ax.set_title('Pareto Front Evolution')
+
+    ax.set_xlim(np.min(x), np.max(x))
+    ax.set_ylim(np.min(y), np.max(y))
+    ax.set_zlim(np.min(z), np.max(z))
+
+    def update(frame):
+        mask = (c == frame)
+        sc._offsets3d = (x[mask], y[mask], z[mask])
+        sc.set_array(c[mask])
+        ax.set_title(f'Generation {frame}')
+        return sc,
+
+    anim = FuncAnimation(fig, update, frames=np.unique(c), interval=200, blit=False)
+    plt.show()
