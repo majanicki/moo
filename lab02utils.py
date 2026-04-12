@@ -177,9 +177,10 @@ def crossover(p1, p2):
     return c1, c2
 
 def mutate(solution):
-    alpha = solution * 5
+    alpha = solution * 50
     alpha[alpha == 0] = 1e-3  # avoid zeros
     return np.random.dirichlet(alpha)
+
 
 def selection(population, n_offspring):
     offspring = []
@@ -242,6 +243,7 @@ def debug2d(population_history, stocks_expected_return, stocks_covariance):
     plt.colorbar(label='Generation')
     plt.xlabel('Return')
     plt.ylabel('Risk')
+    plt.savefig("figs/pop_history_2d.png")
     plt.show()
 
 def debug3d(population_history, stocks_expected_return, stocks_covariance):
@@ -260,28 +262,49 @@ def debug3d(population_history, stocks_expected_return, stocks_covariance):
     z = -np.array(pareto_history_z)
     c = np.array(pareto_history_c)
 
-    fig = plt.figure(figsize=(10, 7))
-    ax = fig.add_subplot(111, projection='3d')
+    views = [
+        (20, 45),
+        (20, 135),
+        (20, 225),
+        (20, 315),
+        (90, 0),        # looking down
+        (-90, 0),    # looking up
+        (0, 180),      # from left side
+        (0, 0),       # from right side
+    ]
 
-    sc = ax.scatter([], [], [], s=20, alpha=0.7, c=[], cmap='viridis')
-    ax.set_xlabel('Return')
-    ax.set_ylabel('Risk')
-    ax.set_zlabel('Number of significant weights')
-    ax.set_title('Pareto Front Evolution')
+    for i, (elev, azim) in enumerate(views):
+        fig = plt.figure(figsize=(10, 7))
+        ax = fig.add_subplot(111, projection='3d')
 
-    ax.set_xlim(np.min(x), np.max(x))
-    ax.set_ylim(np.min(y), np.max(y))
-    ax.set_zlim(np.min(z), np.max(z))
+        sc = ax.scatter([], [], [], s=20, alpha=0.7, c=[], cmap='viridis')
 
-    def update(frame):
-        mask = (c == frame)
-        sc._offsets3d = (x[mask], y[mask], z[mask])
-        sc.set_array(c[mask])
-        ax.set_title(f'Generation {frame}')
-        return sc,
+        ax.set_xlabel('Return')
+        ax.set_ylabel('Risk')
+        ax.set_zlabel('Number of significant weights')
+        ax.set_xlim(np.min(x), np.max(x))
+        ax.set_ylim(np.min(y), np.max(y))
+        ax.set_zlim(np.min(z), np.max(z))
 
-    anim = FuncAnimation(fig, update, frames=np.unique(c), interval=200, blit=False)
-    plt.show()
+        # Set camera view
+        ax.view_init(elev=elev, azim=azim)
+
+        def update(frame):
+            mask = (c == frame)
+            sc._offsets3d = (x[mask], y[mask], z[mask])
+            sc.set_array(c[mask])
+            ax.set_title(f'Gen {frame} | elev={elev}, azim={azim}')
+            return sc,
+
+        anim = FuncAnimation(
+            fig, update,
+            frames=np.unique(c),
+            interval=200,
+            blit=False
+        )
+
+        anim.save(f"figs/pop_history_3d_view_{i}.gif", writer="pillow", fps=5)
+        plt.close(fig)
 
 def inverted_generational_distance(ideal_pareto_front, population, stocks_expected_return, stocks_covariance):
     criteria_population = evaluate_population(population, stocks_expected_return, stocks_covariance)
