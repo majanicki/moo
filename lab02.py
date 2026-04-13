@@ -71,7 +71,7 @@ for i in range(n_samples):
 
 
 pop_sizes = [100, 150, 200, 250]
-gen_sizes = [50, 100, 150, 200]
+gen_sizes = [50 , 100, 150, 200]
 n_repeats = 3
 populations_2d = []
 
@@ -130,7 +130,7 @@ def visualize_sensitivity(populations, pareto_front, name):
         j = x_index[xv]
         grid[i, j] = val
 
-    plt.figure(figsize=(6, 5))
+    plt.figure(figsize=(10, 9))
     plt.imshow(
         grid,
         origin="lower",
@@ -143,7 +143,6 @@ def visualize_sensitivity(populations, pareto_front, name):
             y_unique.max()
         ],
     )
-
     plt.xticks(x_unique)
     plt.yticks(y_unique)
     plt.colorbar(label="Sensitivity (IGD)")
@@ -173,38 +172,59 @@ for pop_size, gen_size, pops in populations_2d:
             best_gen_size = gen_size
 
 
-x = []
-y = []
-stds = []
+plt.figure(figsize=(10, 9))
 
-for i in range(len(best_pops[0])):
-    x.append(i)
-    hvs = []
-    for p in best_pops:
-        hv = hypervolume(p[i], (0.1,1.5), stocks_expected_return, stocks_covariance)
-        hvs.append(hv)
-    y.append(np.mean(hvs))
-    stds.append(np.std(hvs))
-y = np.array(y)
-stds = np.array(stds)
-plt.plot(x, y)
-plt.fill_between(x, y-stds, y+stds, color="lightblue", alpha = 0.3)
+for pop_size, gen_size, pops in populations_2d:
+    if gen_size != gen_sizes[-1]:
+        continue
+    x = []
+    y = []
+    stds = []
+
+    num_gens = len(pops[0])  # assume all runs same length
+
+    for i in range(num_gens):
+        x.append(i)
+        hvs = []
+
+        for p in pops:
+            hv = hypervolume(
+                p[i],
+                (0.1, 1.5),
+                stocks_expected_return,
+                stocks_covariance
+            )
+            hvs.append(hv)
+
+        y.append(np.mean(hvs))
+        stds.append(np.std(hvs))
+
+    y = np.array(y)
+    stds = np.array(stds)
+
+    plt.plot(x, y, label=f"pop={pop_size}")
+    plt.fill_between(x, y - stds, y + stds, alpha=0.2)
+
 plt.ylabel("Hypervolume")
 plt.xlabel("Generation")
-plt.title(f"Change in hypervolume for NSGAII in 2D case (population size = {best_pop_size})")
-plt.savefig(f"figs/hv_2d.png")
+plt.title(f"Change in hypervolume for NSGA-II (2D case, pop={best_pop_size})")
+plt.legend()
+plt.savefig("figs/hv_2d.png")
 plt.show()
 
 c = evaluate_population(best_pops[-1][-1], stocks_expected_return, stocks_covariance)
 nsga2_x_returns = -c[:,1]
 nsga2_y_risks = c[:,0]
 
-fig, ax = plt.subplots(3, 1, sharex=True, sharey=True)
-ax[0].scatter(wsm_x_returns, wsm_y_risks)
-ax[1].scatter(ecm_x_returns, ecm_y_risks)
-ax[2].scatter(nsga2_x_returns, nsga2_y_risks)
+fig, ax = plt.subplots(3, 1, sharex=True, sharey=True, figsize=(10,9))
+ax[0].scatter(wsm_x_returns, wsm_y_risks); ax[0].set_title("WSM")
+ax[1].scatter(ecm_x_returns, ecm_y_risks); ax[1].set_title("ECM"); ax[1].set_ylabel("Risk")
+ax[2].scatter(nsga2_x_returns, nsga2_y_risks); ax[2].set_title("NSGAII")
+plt.xlabel("Return")
 plt.savefig("figs/pareto_front_comp_2d.png")
 plt.show()
+
+
 debug2d(best_pops[-1], stocks_expected_return, stocks_covariance)
 debug3d(populations_3d[-1][-1][-1], stocks_expected_return, stocks_covariance)
 

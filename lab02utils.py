@@ -239,6 +239,7 @@ def debug2d(population_history, stocks_expected_return, stocks_covariance):
         pareto_history_x += list(criteria[:, 1])
         pareto_history_y += list(criteria[:, 0])
         pareto_history_c += [g] * len(criteria[:, 0])
+    plt.figure(figsize=(10, 9))
     plt.scatter(-np.array(pareto_history_x), pareto_history_y, c=pareto_history_c)
     plt.colorbar(label='Generation')
     plt.xlabel('Return')
@@ -274,7 +275,7 @@ def debug3d(population_history, stocks_expected_return, stocks_covariance):
     ]
 
     for i, (elev, azim) in enumerate(views):
-        fig = plt.figure(figsize=(10, 7))
+        fig = plt.figure(figsize=(10, 9))
         ax = fig.add_subplot(111, projection='3d')
 
         sc = ax.scatter([], [], [], s=20, alpha=0.7, c=[], cmap='viridis')
