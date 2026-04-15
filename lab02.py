@@ -73,8 +73,8 @@ for i in range(n_samples):
 
 
 pop_sizes = [20, 30, 40, 50]
-gen_sizes = [50 , 100, 150, 200]
-n_repeats = 3
+gen_sizes = [100, 150, 200]
+n_repeats = 10
 populations_2d = []
 
 for pop_size in pop_sizes:
@@ -239,7 +239,7 @@ ax.scatter(initial_solution[0], initial_solution[1], initial_solution[2],
            label="initial", s=100)
 
 # Plot mutated points
-ax.scatter(x, y, z, label="mutated")
+ax.scatter(x, y, z, label="Mutated")
 
 # Labels (optional but helpful)
 ax.set_xlabel("X")
@@ -250,6 +250,7 @@ ax.set_ylim(0, 1)
 ax.set_zlim(0, 1)
 plt.legend()
 plt.title("Mutation")
+plt.savefig("figs/mutation_proof.png")
 plt.show()
 
 p1 = get_random_solution(3)
@@ -275,7 +276,7 @@ ax = fig.add_subplot(111, projection='3d')
 ax.scatter([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]],
            label="initial", s=100)
 
-ax.scatter(x, y, z, label="mutated")
+ax.scatter(x, y, z, label="Offspring")
 
 ax.set_xlabel("X")
 ax.set_ylabel("Y")
@@ -285,6 +286,7 @@ ax.set_ylim(0, 1)
 ax.set_zlim(0, 1)
 plt.legend()
 plt.title("Crossover operator")
+plt.savefig("figs/crossover_proof.png")
 plt.show()
 
 

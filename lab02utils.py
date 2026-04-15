@@ -299,10 +299,6 @@ def debug3d(population_history, stocks_expected_return, stocks_covariance):
         (20, 135),
         (20, 225),
         (20, 315),
-        (90, 0),        # looking down
-        (-90, 0),    # looking up
-        (0, 180),      # from left side
-        (0, 0),       # from right side
     ]
 
     for i, (elev, azim) in enumerate(views):
@@ -318,7 +314,6 @@ def debug3d(population_history, stocks_expected_return, stocks_covariance):
         ax.set_ylim(np.min(y), np.max(y))
         ax.set_zlim(np.min(z), np.max(z))
 
-        # Set camera view
         ax.view_init(elev=elev, azim=azim)
 
         def update(frame):
