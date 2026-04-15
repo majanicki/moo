@@ -170,11 +170,42 @@ def ngsa2_sort(population, criteria):
     
     return np.array([population[o] for o in order]), pareto_front
 
+# def crossover(p1, p2):
+#     alpha = random.gauss(0.0, 0.15)
+#     c1 = alpha * p1 + (1-alpha) * p2
+#     c2 = (1-alpha) * p1 + alpha * p2
+#     if np.any(c1 < 0):
+#         c1 = p1
+#     if np.any(c2 < 0):
+#         c2 = p2
+#     return c1, c2
+
 def crossover(p1, p2):
-    alpha = 0.15
-    c1 = alpha * p1 + (1-alpha) * p2
-    c2 = (1-alpha) * p1 + alpha * p2
+    u = random.random()
+    index = 15
+
+    if u < 0.5:
+        beta = pow(2 * u, 1/(index + 1))
+    else:
+        beta = pow(1/(2 * (1 - u)), 1/(index + 1))
+
+    c1 = 0.5 * ((1 + beta) * p1 + (1 - beta) * p2)
+    c2 = 0.5 * ((1 - beta) * p1 + (1 + beta) * p2)
+
+    if np.any(c1 < 0):
+        c1 = p1
+    if np.any(c2 < 0):
+        c2 = p2
+
     return c1, c2
+
+# def crossover(p1, p2):
+#     mask = np.random.binomial(1, 0.5, size=len(p1))
+
+#     c1 = mask * p1 + (1 - mask) * p2
+#     c2 = mask * p2 + (1 - mask) * p1
+#     print(sum(c1), sum(c2))
+#     return c1, c2
 
 def mutate(solution):
     alpha = solution * 50

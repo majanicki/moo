@@ -9,6 +9,8 @@ cvxopt.solvers.options['show_progress'] = False
 from lab02utils import *
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
+import seaborn as sns
+import pandas as pd
 
 stocks = {}
 for stock_filename in glob.glob("bundle1/*.txt"):
@@ -70,7 +72,7 @@ for i in range(n_samples):
     ecm_solutions.append(w)
 
 
-pop_sizes = [100, 150, 200, 250]
+pop_sizes = [20, 30, 40, 50]
 gen_sizes = [50 , 100, 150, 200]
 n_repeats = 3
 populations_2d = []
@@ -96,60 +98,49 @@ for pop_size in pop_sizes:
 
 
 def visualize_sensitivity(populations, pareto_front, name):
-    values = []
-    x_vals = []
-    y_vals = []
+    records = []
 
-    # compute sensitivity metric for each configuration
     for pop_size, gen_size, pops in populations:
-        c = []
-        for p in pops:
-            c.append(
-                inverted_generational_distance(
-                    pareto_front,
-                    p[-1],
-                    stocks_expected_return,
-                    stocks_covariance
-                )
+        c = [
+            inverted_generational_distance(
+                pareto_front,
+                p[-1],
+                stocks_expected_return,
+                stocks_covariance
             )
+            for p in pops
+        ]
 
-        values.append(np.mean(c))
-        x_vals.append(pop_size)
-        y_vals.append(gen_size)
+        records.append({
+            "Population": pop_size,
+            "Generations": gen_size,
+            "IGD": np.mean(c)
+        })
 
-    x_unique = np.sort(np.unique(x_vals))
-    y_unique = np.sort(np.unique(y_vals))
+    df = pd.DataFrame(records)
 
-    x_index = {v: i for i, v in enumerate(x_unique)}
-    y_index = {v: i for i, v in enumerate(y_unique)}
+    # Pivot into grid
+    pivot = df.pivot(index="Generations", columns="Population", values="IGD")
 
-    grid = np.full((len(y_unique), len(x_unique)), np.nan)
+    plt.figure(figsize=(10, 8))
+    sns.set_theme(style="whitegrid", font_scale=1.2)
 
-    for xv, yv, val in zip(x_vals, y_vals, values):
-        i = y_index[yv]
-        j = x_index[xv]
-        grid[i, j] = val
-
-    plt.figure(figsize=(10, 9))
-    plt.imshow(
-        grid,
-        origin="lower",
-        aspect="auto",
+    ax = sns.heatmap(
+        pivot,
         cmap="viridis",
-        extent=[
-            x_unique.min(),
-            x_unique.max(),
-            y_unique.min(),
-            y_unique.max()
-        ],
+        annot=True,          # show values
+        fmt=".3f",
+        linewidths=0.5,
+        linecolor="gray",
+        cbar_kws={"label": "Sensitivity (IGD)"}
     )
-    plt.xticks(x_unique)
-    plt.yticks(y_unique)
-    plt.colorbar(label="Sensitivity (IGD)")
-    plt.xlabel("Population size")
-    plt.ylabel("Generation size")
-    plt.title(f"Sensitivity {name}")
-    plt.savefig(f"figs/sensitivity_{name}.png")
+
+    ax.set_title(f"Sensitivity Analysis: {name}", fontsize=16, pad=15)
+    ax.set_xlabel("Population Size")
+    ax.set_ylabel("Generation Size")
+
+    plt.tight_layout()
+    plt.savefig(f"figs/sensitivity_{name}.png", dpi=300)
     plt.show()
 
 visualize_sensitivity(populations_3d, ideal_pareto_front_3d, "3D")
@@ -227,6 +218,76 @@ plt.show()
 
 debug2d(best_pops[-1], stocks_expected_return, stocks_covariance)
 debug3d(populations_3d[-1][-1][-1], stocks_expected_return, stocks_covariance)
+initial_solution = get_random_solution(3)
+
+x = []
+y = []
+z = []
+
+for i in range(30):
+    s = mutate(initial_solution)
+    x.append(s[0])
+    y.append(s[1])
+    z.append(s[2])
+
+# Create 3D plot
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+# Plot initial point
+ax.scatter(initial_solution[0], initial_solution[1], initial_solution[2],
+           label="initial", s=100)
+
+# Plot mutated points
+ax.scatter(x, y, z, label="mutated")
+
+# Labels (optional but helpful)
+ax.set_xlabel("X")
+ax.set_ylabel("Y")
+ax.set_zlabel("Z")
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.set_zlim(0, 1)
+plt.legend()
+plt.title("Mutation")
+plt.show()
+
+p1 = get_random_solution(3)
+p2 = get_random_solution(3)
+
+
+x = []
+y = []
+z = []
+
+for i in range(30):
+    s1, s2 = crossover(p1, p2)
+    x.append(s1[0])
+    y.append(s1[1])
+    z.append(s1[2])
+    x.append(s2[0])
+    y.append(s2[1])
+    z.append(s2[2])
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+ax.scatter([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]],
+           label="initial", s=100)
+
+ax.scatter(x, y, z, label="mutated")
+
+ax.set_xlabel("X")
+ax.set_ylabel("Y")
+ax.set_zlabel("Z")
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.set_zlim(0, 1)
+plt.legend()
+plt.title("Crossover operator")
+plt.show()
+
+
 
 # population_history = evolve(200, 100, stocks_expected_return, stocks_covariance, False)
 # print(inverted_generational_distance(ideal_pareto_front, population_history[-1], stocks_expected_return, stocks_covariance))
