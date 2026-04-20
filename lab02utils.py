@@ -353,11 +353,13 @@ def inverted_generational_distance(ideal_pareto_front, population, stocks_expect
 
 def hypervolume(population, reference_point, stocks_expected_return, stocks_covariance):
     criteria_population = evaluate_population(population, stocks_expected_return, stocks_covariance)
+    population, pareto_front = ngsa2_sort(population, criteria_population)
+    criteria_population = criteria_population[pareto_front]
     criteria_population = criteria_population[np.lexsort((criteria_population[:, 1], -criteria_population[:, 0]))]
+    
     total_volume = 0
     for y, x in criteria_population:
         volume = (reference_point[0] - x) * (reference_point[1] - y)
-        print(x, y, reference_point, volume)
         reference_point = (reference_point[0], y)
         total_volume += volume
     return total_volume

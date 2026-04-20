@@ -230,8 +230,7 @@ for i in range(30):
     y.append(s[1])
     z.append(s[2])
 
-# Create 3D plot
-fig = plt.figure()
+fig = plt.figure(figsize=(10, 9))
 ax = fig.add_subplot(111, projection='3d')
 
 # Plot initial point
@@ -270,7 +269,7 @@ for i in range(30):
     y.append(s2[1])
     z.append(s2[2])
 
-fig = plt.figure()
+fig = plt.figure(figsize=(10, 9))
 ax = fig.add_subplot(111, projection='3d')
 
 ax.scatter([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]],
@@ -288,7 +287,6 @@ plt.legend()
 plt.title("Crossover operator")
 plt.savefig("figs/crossover_proof.png")
 plt.show()
-
 
 
 # population_history = evolve(200, 100, stocks_expected_return, stocks_covariance, False)
