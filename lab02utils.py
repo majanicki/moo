@@ -364,3 +364,34 @@ def hypervolume(population, reference_point, stocks_expected_return, stocks_cova
         total_volume += volume
     return total_volume
 
+# Corssover - poprawić
+# Dirichlet - udowodnić
+# Lepsze ładniejsze confusion heatmap, 10 uruchomień
+# Populacja mniejsza, żeby było widać różnicę
+
+
+# Koewalujca:
+# -  można mierzyć success rate, śledzić z której wyspy są rozwiązania
+# - zrobić fajnie matematycznie
+# - tyle samo ewluacji
+# - specjalizacje powinny innaczej działać
+# - dopieszczony ma być, dynamiczne population size i ma widać w wynikach, że jest lepiej
+# - auc z convergence plot
+
+# Fajny pomysł:
+# - każdy population element mógłby trzymać drzewo genealogiczne
+# - gradient na podstawie rodziców, lub archiwum
+
+# Inny fajny pomysł:
+# - steady state z NSGAII
+
+# Inny fajny pomysł:
+# - próba przewidywania zmiany z crowding distance
+
+# Inny fajny pomysł:
+# - dynamiczny population size
+
+# POKAŻ WPROST, ŻE JEST IMPROVEMENT (tempo convergance)
+
+# NSGAII:
+# - restricated mating pool (krzyżujemy rozwiązania blisko siebie)
