@@ -168,7 +168,7 @@ def ngsa2_sort(population, criteria):
             pareto_front = non_dominated
         order += [x for _, x in sorted(zip(cd, non_dominated), key=lambda pair: pair[0], reverse=True)]
     
-    return np.array([population[o] for o in order]), pareto_front
+    return np.array([population[o] for o in order]), pareto_front, order
 
 # def crossover(p1, p2):
 #     alpha = random.gauss(0.0, 0.15)
@@ -180,9 +180,8 @@ def ngsa2_sort(population, criteria):
 #         c2 = p2
 #     return c1, c2
 
-def crossover(p1, p2):
+def crossover(p1, p2, index=15):
     u = random.random()
-    index = 15
 
     if u < 0.5:
         beta = pow(2 * u, 1/(index + 1))
@@ -207,19 +206,19 @@ def crossover(p1, p2):
 #     print(sum(c1), sum(c2))
 #     return c1, c2
 
-def mutate(solution):
-    alpha = solution * 50
+def mutate(solution, mstrength=50):
+    alpha = solution * mstrength
     alpha[alpha == 0] = 1e-3  # avoid zeros
     return np.random.dirichlet(alpha)
 
 
-def selection(population, n_offspring):
+def selection(population, n_offspring, index = 15, mstrength = 50):
     offspring = []
     for _ in range(n_offspring//2):
         p1, p2 = random.choices(population, k = 2)
-        c1, c2 = crossover(p1, p2)
-        offspring.append(mutate(c1))
-        offspring.append(mutate(c2))
+        c1, c2 = crossover(p1, p2, index)
+        offspring.append(mutate(c1, mstrength))
+        offspring.append(mutate(c2, mstrength))
     return np.array(offspring)
 
 
@@ -246,26 +245,98 @@ def evolve(pop_size, generations, stocks_expected_return, stocks_covariance, thr
     evaluate_f = evaluate_population if not three_dimensional else evaluate_population_3D
     population = get_random_population(pop_size, len(stocks_expected_return))
     criteria = evaluate_f(population, stocks_expected_return, stocks_covariance)
-    population, front = ngsa2_sort(population, criteria)
-    population_history = [population]
+    population, front, _ = ngsa2_sort(population, criteria)
+    evals = pop_size
+    population_history = [(evals, population)]
     for g in range(1, generations):
 
         offspring = selection(population, int(pop_size * 0.2))
         population = np.vstack((population, offspring))
         criteria = evaluate_f(population, stocks_expected_return, stocks_covariance)
-        population, front = ngsa2_sort(population, criteria)
+        population, front, _ = ngsa2_sort(population, criteria)
         population = population[:pop_size]
         print(g, criteria[front[0]])
-        population_history.append(population)
+        evals += pop_size
+        population_history.append((evals, population))
 
     return population_history
 
+def evolve_island(pop_size, generations, stocks_expected_return, stocks_covariance, three_dimensional):
+
+    evaluate_f = evaluate_population if not three_dimensional else evaluate_population_3D
+    population_explore = get_random_population(pop_size, len(stocks_expected_return))
+    population_exploit = get_random_population(pop_size, len(stocks_expected_return))
+
+    criteria_explore = evaluate_f(population_explore, stocks_expected_return, stocks_covariance)
+    population_explore, front, _ = ngsa2_sort(population_explore, criteria_explore)
+
+    criteria_exploit = evaluate_f(population_exploit, stocks_expected_return, stocks_covariance)
+    population_exploit, front, _ = ngsa2_sort(population_exploit, criteria_exploit)
+
+    population_history_exploit = [population_exploit.copy()]
+    population_history_explore = [population_explore.copy()]
+
+    evals = pop_size * 2
+    population_history = [(evals, np.vstack((population_explore, population_exploit))) ]
+
+    n_migrants = 10
+    for g in range(1, generations):
+
+        offspring = selection(population_explore, int(pop_size * 0.2), index=5, mstrength=10)
+        # population_explore = np.vstack((population_explore, offspring, population_history_exploit[-1][np.random.choice(pop_size, n_migrants)]))
+        population_explore = np.vstack((population_explore, offspring, population_history_exploit[-1][:n_migrants]))
+        criteria = evaluate_f(population_explore, stocks_expected_return, stocks_covariance)
+        population_explore, front, _ = ngsa2_sort(population_explore, criteria)
+        population_explore = population_explore[:pop_size]
+
+        offspring = selection(population_exploit, int(pop_size * 0.2), index=30, mstrength=100)
+        # population_exploit = np.vstack((population_exploit, offspring, population_history_explore[-1][np.random.choice(pop_size, n_migrants)]))
+        population_exploit = np.vstack((population_exploit, offspring, population_history_explore[-1][:n_migrants]))
+        criteria = evaluate_f(population_exploit, stocks_expected_return, stocks_covariance)
+        population_exploit, front, _ = ngsa2_sort(population_exploit, criteria)
+        population_exploit = population_exploit[:pop_size]
+
+        print(g)
+        population_history_explore.append(population_explore.copy())
+        population_history_exploit.append(population_exploit.copy())
+        evals += pop_size * 2
+        population_history.append((evals, np.vstack((population_explore, population_exploit))) )
+
+
+
+    return population_history
+
+def evolve_steady(pop_size, generations, stocks_expected_return, stocks_covariance, three_dimensional):
+
+    evaluate_f = evaluate_population if not three_dimensional else evaluate_population_3D
+    population = get_random_population(pop_size, len(stocks_expected_return))
+    criteria = evaluate_f(population, stocks_expected_return, stocks_covariance)
+    population, front, order = ngsa2_sort(population, criteria)
+    criteria = criteria[order]
+    evals = pop_size
+    population_history = [(evals, population)]
+    for g in range(1, generations):
+
+        offspring = selection(population, 2)[1:]
+        c_offspring = evaluate_f(offspring, stocks_expected_return, stocks_covariance)
+        population = np.vstack((population, offspring))
+        criteria = np.vstack((criteria, c_offspring))
+        population, front, order = ngsa2_sort(population, criteria)
+        criteria = criteria[order]
+        population = population[:pop_size]
+        criteria = criteria[:pop_size]
+        print(g, criteria[front[0]])
+        evals += len(offspring)
+        population_history.append((evals, population))
+
+    return population_history
 
 def debug2d(population_history, stocks_expected_return, stocks_covariance):
     pareto_history_x = []
     pareto_history_y = []
     pareto_history_c = []
     for g, population in enumerate(population_history):
+        _, population = population
         criteria = evaluate_population(population, stocks_expected_return, stocks_covariance)
         pareto_history_x += list(criteria[:, 1])
         pareto_history_y += list(criteria[:, 0])
@@ -353,7 +424,7 @@ def inverted_generational_distance(ideal_pareto_front, population, stocks_expect
 
 def hypervolume(population, reference_point, stocks_expected_return, stocks_covariance):
     criteria_population = evaluate_population(population, stocks_expected_return, stocks_covariance)
-    population, pareto_front = ngsa2_sort(population, criteria_population)
+    population, pareto_front, _ = ngsa2_sort(population, criteria_population)
     criteria_population = criteria_population[pareto_front]
     criteria_population = criteria_population[np.lexsort((criteria_population[:, 1], -criteria_population[:, 0]))]
     
