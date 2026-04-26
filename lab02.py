@@ -71,62 +71,57 @@ for i in range(n_samples):
     ecm_y_risks.append(risk)
     ecm_solutions.append(w)
 
-# island_data = []
-# standard_data = []
-# steady_data = []
+island_data = []
+standard_data = []
+steady_data = []
 
-# for _ in range(10):
-#     a = evolve_island(25, 150, stocks_expected_return, stocks_covariance, False)
-#     c = evolve(50, 150, stocks_expected_return, stocks_covariance, False)
-#     d = evolve_steady(50, 6000, stocks_expected_return, stocks_covariance, False)
+
+for _ in range(5):
+    a = evolve_island(25, 150, stocks_expected_return, stocks_covariance, False)
+    c = evolve(50, 150, stocks_expected_return, stocks_covariance, False)
+    d = evolve_steady(50, 1, stocks_expected_return, stocks_covariance, False)
 
     
 
-#     island_data.append(a)
-#     standard_data.append(c)
-#     steady_data.append(d)
-d = evolve_steady(50, 3, stocks_expected_return, stocks_covariance, False)
-debug2d(d, stocks_expected_return, stocks_covariance)
+    island_data.append(a)
+    standard_data.append(c)
+    steady_data.append(d)
 
-# debug2d(popa, stocks_expected_return, stocks_covariance)
-# debug2d(popb, stocks_expected_return, stocks_covariance)
+plt.figure(figsize=(10, 9))
 
-# plt.figure(figsize=(10, 9))
+for name, histories in [("island", island_data), ("standard", standard_data), ("steady", steady_data)]:
+    x = []
+    y = []
+    stds = []
 
-# for name, histories in [("island", island_data), ("standard", standard_data), ("steady", steady_data)]:
-#     x = []
-#     y = []
-#     stds = []
+    num_gens = len(histories[0])  # assume all runs same length
+    for i in range(num_gens):
+        x.append(histories[0][i][0])
+        hvs = []
+        for history in histories:
+            hv = inverted_generational_distance(
+                ecm_solutions,
+                history[i][1],
+                stocks_expected_return,
+                stocks_covariance
+            )
+            hvs.append(hv)
 
-#     num_gens = len(histories[0])  # assume all runs same length
-#     for i in range(num_gens):
-#         x.append(histories[0][i][0])
-#         hvs = []
-#         for history in histories:
-#             hv = hypervolume(
-#                 history[i][1],
-#                 (0.1, 1.5),
-#                 stocks_expected_return,
-#                 stocks_covariance
-#             )
-#             hvs.append(hv)
+        y.append(np.mean(hvs))
+        stds.append(np.std(hvs))
 
-#         y.append(np.mean(hvs))
-#         stds.append(np.std(hvs))
+    y = np.array(y)
+    stds = np.array(stds)
 
-#     y = np.array(y)
-#     stds = np.array(stds)
+    plt.plot(x, y, label=f"pop={name}")
+    plt.fill_between(x, y - stds, y + stds, alpha=0.2)
 
-#     plt.plot(x, y, label=f"pop={name}")
-#     plt.fill_between(x, y - stds, y + stds, alpha=0.2)
-
-# plt.ylabel("Hypervolume")
-# plt.xlabel("Evaluation")
-# plt.title(f"Change in hypervolume for NSGA-II (2D case)")
-# plt.legend()
-# plt.savefig("figs/new_methods.png")
-# plt.show()
-
+plt.ylabel("Hypervolume")
+plt.xlabel("Evaluation")
+plt.title(f"Change in hypervolume for NSGA-II (2D case)")
+plt.legend()
+plt.savefig("figs/new_methods.png")
+plt.show()
 
 # pop_sizes = [20, 30, 40, 50]
 # gen_sizes = [100, 150, 200]

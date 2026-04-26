@@ -9,6 +9,8 @@ from copy import copy
 cvxopt.solvers.options['show_progress'] = False
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
+import numpy as np
+from scipy.spatial import cKDTree
 
 def load_stock_data(filename):
     with open(filename, "r") as file:
@@ -221,7 +223,34 @@ def selection(population, n_offspring, index = 15, mstrength = 50):
         offspring.append(mutate(c2, mstrength))
     return np.array(offspring)
 
+def selection_close(population, n_offspring, index=15, mstrength=50):
+    offspring = []
 
+    dist_matrix = np.linalg.norm(population[:, None] - population[None, :], axis=2)
+
+    np.fill_diagonal(dist_matrix, np.inf)
+
+    for _ in range(n_offspring // 2):
+        i = random.randrange(len(population))
+
+        j = np.argmin(dist_matrix[i])
+
+        p1, p2 = population[i], population[j]
+
+        c1, c2 = crossover(p1, p2, index)
+        offspring.append(mutate(c1, mstrength))
+        offspring.append(mutate(c2, mstrength))
+
+    return np.array(offspring)
+
+def selection_elite(population, n_offspring, index=15, mstrength=50):
+    offspring = []
+    for _ in range(n_offspring//2):
+        p1, p2 = random.choices(population[:int(len(population) * 0.1)], k = 2)
+        c1, c2 = crossover(p1, p2, index)
+        offspring.append(mutate(c1, mstrength))
+        offspring.append(mutate(c2, mstrength))
+    return np.array(offspring)
 
 def get_random_solution(size):
     l = [0] + sorted(list(np.random.random(size - 1))) + [1]
@@ -256,7 +285,7 @@ def evolve(pop_size, generations, stocks_expected_return, stocks_covariance, thr
         population, front, _ = ngsa2_sort(population, criteria)
         population = population[:pop_size]
         print(g, criteria[front[0]])
-        evals += pop_size
+        evals += len(offspring)
         population_history.append((evals, population))
 
     return population_history
@@ -280,6 +309,7 @@ def evolve_island(pop_size, generations, stocks_expected_return, stocks_covarian
     population_history = [(evals, np.vstack((population_explore, population_exploit))) ]
 
     n_migrants = 10
+    
     for g in range(1, generations):
 
         offspring = selection(population_explore, int(pop_size * 0.2), index=5, mstrength=10)
@@ -299,10 +329,8 @@ def evolve_island(pop_size, generations, stocks_expected_return, stocks_covarian
         print(g)
         population_history_explore.append(population_explore.copy())
         population_history_exploit.append(population_exploit.copy())
-        evals += pop_size * 2
+        evals += len(offspring) * 2
         population_history.append((evals, np.vstack((population_explore, population_exploit))) )
-
-
 
     return population_history
 
@@ -317,7 +345,7 @@ def evolve_steady(pop_size, generations, stocks_expected_return, stocks_covarian
     population_history = [(evals, population)]
     for g in range(1, generations):
 
-        offspring = selection(population, 2)[1:]
+        offspring = selection_elite(population, 2)[1:]
         c_offspring = evaluate_f(offspring, stocks_expected_return, stocks_covariance)
         population = np.vstack((population, offspring))
         criteria = np.vstack((criteria, c_offspring))
@@ -404,22 +432,31 @@ def debug3d(population_history, stocks_expected_return, stocks_covariance):
         anim.save(f"figs/pop_history_3d_view_{i}.gif", writer="pillow", fps=5)
         plt.close(fig)
 
-def inverted_generational_distance(ideal_pareto_front, population, stocks_expected_return, stocks_covariance):
-    criteria_population = evaluate_population(population, stocks_expected_return, stocks_covariance)
-    criteria_pf = evaluate_population(ideal_pareto_front, stocks_expected_return, stocks_covariance)
+def inverted_generational_distance(ideal_pareto_front, population,
+                                   stocks_expected_return, stocks_covariance):
+
+    criteria_population = evaluate_population(population,
+                                              stocks_expected_return,
+                                              stocks_covariance)
+    criteria_pf = evaluate_population(ideal_pareto_front,
+                                      stocks_expected_return,
+                                      stocks_covariance)
+
+    # normalization
     norm_min = criteria_pf.min(axis=0)
     norm_max = criteria_pf.max(axis=0)
-    criteria_population = (criteria_population - norm_min) / (norm_max - norm_min)
-    criteria_pf = (criteria_pf - norm_min) / (norm_max - norm_min)
-    s = 0
-    for pf_solution in criteria_pf:
-        closest = float('inf')
-        for solution in criteria_population:
-            distance = np.linalg.norm(pf_solution - solution)
-            if distance < closest:
-                closest = distance
-        s += closest
-    return s / len(ideal_pareto_front)
+    denom = np.where(norm_max - norm_min == 0, 1.0, norm_max - norm_min)
+
+    criteria_population = (criteria_population - norm_min) / denom
+    criteria_pf = (criteria_pf - norm_min) / denom
+
+    # build KD-tree on population
+    tree = cKDTree(criteria_population)
+
+    # query nearest neighbor distances for all PF points at once
+    distances, _ = tree.query(criteria_pf, k=1)
+
+    return distances.mean()
 
 
 def hypervolume(population, reference_point, stocks_expected_return, stocks_covariance):
