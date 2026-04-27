@@ -76,10 +76,10 @@ standard_data = []
 steady_data = []
 
 
-for _ in range(5):
-    a = evolve_island(25, 150, stocks_expected_return, stocks_covariance, False)
+for _ in range(10):
+    a = evolve_dynamic(50, 150, stocks_expected_return, stocks_covariance, False)
     c = evolve(50, 150, stocks_expected_return, stocks_covariance, False)
-    d = evolve_steady(50, 1, stocks_expected_return, stocks_covariance, False)
+    d = evolve_steady(50, 1500, stocks_expected_return, stocks_covariance, False)
 
     
 
@@ -87,9 +87,11 @@ for _ in range(5):
     standard_data.append(c)
     steady_data.append(d)
 
+debug2d_animated_3way([steady_data[-1], island_data[-1], steady_data[-1]],stocks_expected_return, stocks_covariance)
 plt.figure(figsize=(10, 9))
 
-for name, histories in [("island", island_data), ("standard", standard_data), ("steady", steady_data)]:
+methods = [("dynamic", island_data), ("standard", standard_data), ("steady", steady_data)]
+for name, histories in methods:
     x = []
     y = []
     stds = []
@@ -118,7 +120,7 @@ for name, histories in [("island", island_data), ("standard", standard_data), ("
 
 plt.ylabel("Hypervolume")
 plt.xlabel("Evaluation")
-plt.title(f"Change in hypervolume for NSGA-II (2D case)")
+plt.title(f"IGD for NSGA-II (2D case)")
 plt.legend()
 plt.savefig("figs/new_methods.png")
 plt.show()

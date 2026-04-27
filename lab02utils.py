@@ -289,6 +289,61 @@ def evolve(pop_size, generations, stocks_expected_return, stocks_covariance, thr
         population_history.append((evals, population))
 
     return population_history
+import numpy as np
+
+def evolve_dynamic(pop_size, generations, stocks_expected_return, stocks_covariance, three_dimensional):
+
+    evaluate_f = evaluate_population if not three_dimensional else evaluate_population_3D
+
+    population = get_random_population(pop_size, len(stocks_expected_return))
+    criteria = evaluate_f(population, stocks_expected_return, stocks_covariance)
+
+    population, front, _ = ngsa2_sort(population, criteria)
+    evals = pop_size
+
+    population_history = [(evals, population)]
+
+    base_children = int(pop_size * 0.25)
+
+    for g in range(1, generations):
+
+        t = g / generations
+
+        explore_ratio = max(0.1, 1.0 - t)
+        exploit_ratio = 1.0 - explore_ratio
+
+        n_explore = int(base_children * explore_ratio)
+        n_exploit = base_children - n_explore
+
+        n_explore = (n_explore // 2) * 2
+        n_exploit = (n_exploit // 2) * 2
+
+        if n_explore + n_exploit == 0:
+            n_explore = 2
+
+        o1 = np.empty((0, population.shape[1]))
+        o2 = np.empty((0, population.shape[1]))
+
+        if n_explore > 0:
+            o1 = selection(population, n_explore, index=5, mstrength=10)
+
+        if n_exploit > 0:
+            o2 = selection_close(population, n_exploit, index=10, mstrength=30)
+
+        offspring = np.vstack((o1, o2)) if (len(o1) + len(o2)) > 0 else np.empty_like(population[:0])
+
+        population = np.vstack((population, offspring))
+
+        criteria = evaluate_f(population, stocks_expected_return, stocks_covariance)
+        population, front, _ = ngsa2_sort(population, criteria)
+        population = population[:pop_size]
+
+        print(g, n_explore, n_exploit)
+
+        evals += len(offspring)
+        population_history.append((evals, population))
+
+    return population_history
 
 def evolve_island(pop_size, generations, stocks_expected_return, stocks_covariance, three_dimensional):
 
@@ -309,7 +364,6 @@ def evolve_island(pop_size, generations, stocks_expected_return, stocks_covarian
     population_history = [(evals, np.vstack((population_explore, population_exploit))) ]
 
     n_migrants = 10
-    
     for g in range(1, generations):
 
         offspring = selection(population_explore, int(pop_size * 0.2), index=5, mstrength=10)
@@ -375,6 +429,87 @@ def debug2d(population_history, stocks_expected_return, stocks_covariance):
     plt.xlabel('Return')
     plt.ylabel('Risk')
     plt.savefig("figs/pop_history_2d.png")
+    plt.show()
+
+def debug2d_animated_3way(
+    pop_histories,
+    stocks_expected_return,
+    stocks_covariance,
+    save_path="figs/pop_history_2d.gif"
+):
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+    for ax in axes:
+        ax.set_xlabel("Return")
+        ax.set_ylabel("Risk")
+
+    scatters = [ax.scatter([], [], s=20) for ax in axes]
+    gen_data_all = []
+
+    for history in pop_histories:
+        gen_data = []
+
+        for g, population in enumerate(history):
+            evals, population = population
+
+            criteria = evaluate_population(
+                population,
+                stocks_expected_return,
+                stocks_covariance
+            )
+
+            x = -criteria[:, 1]
+            y = criteria[:, 0]
+
+            if evals % 2 == 0:
+                gen_data.append((x, y, evals, g))
+
+        gen_data_all.append(gen_data)
+
+
+    all_evals = sorted(set(
+        d[2]
+        for hist in gen_data_all
+        for d in hist
+    ))
+
+
+    def get_closest(history, target_eval):
+        return min(history, key=lambda d: abs(d[2] - target_eval))
+
+
+    all_x = np.concatenate([d[0] for hist in gen_data_all for d in hist])
+    all_y = np.concatenate([d[1] for hist in gen_data_all for d in hist])
+
+    for ax in axes:
+        ax.set_xlim(all_x.min(), all_x.max())
+        ax.set_ylim(all_y.min(), all_y.max())
+
+
+    def update(frame):
+        eval_target = all_evals[frame]
+
+        for i, (history, scat) in enumerate(zip(gen_data_all, scatters)):
+
+            x, y, evals, g = get_closest(history, eval_target)
+
+            scat.set_offsets(np.c_[x, y])
+            axes[i].set_title(
+                f"Run {i+1} | Gen {g} | Evals {evals}"
+            )
+
+        return scatters
+
+    ani = FuncAnimation(
+        fig,
+        update,
+        frames=len(all_evals),
+        interval=300,
+        blit=False
+    )
+
+    ani.save(save_path, writer="pillow", fps=4)
     plt.show()
 
 def debug3d(population_history, stocks_expected_return, stocks_covariance):
