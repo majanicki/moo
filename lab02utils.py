@@ -12,6 +12,15 @@ from matplotlib.animation import FuncAnimation
 import numpy as np
 from scipy.spatial import cKDTree
 from pymoo.indicators.hv import HV
+import pickle
+
+def save_results(filename, data):
+    with open(filename, "wb") as f:
+        pickle.dump(data, f)
+
+def load_results(filename):
+    with open(filename, "rb") as f:
+        return pickle.load(f)
 
 def load_stock_data(filename):
     with open(filename, "r") as file:
@@ -396,7 +405,7 @@ def evolve_steady(pop_size, generations, stocks_expected_return, stocks_covarian
     population_history = [(evals, population)]
     for g in range(1, generations):
 
-        if g < generations / 2:
+        if g < generations * 0.65:
             offspring = selection_elite(population, 2)[1:]
         else:
             offspring = selection(population, int(pop_size * 0.2))
@@ -667,7 +676,6 @@ def inverted_generational_distance(ideal_pareto_front, population,
                                       stocks_expected_return,
                                       stocks_covariance)
 
-    # normalization
     norm_min = criteria_pf.min(axis=0)
     norm_max = criteria_pf.max(axis=0)
     denom = np.where(norm_max - norm_min == 0, 1.0, norm_max - norm_min)
@@ -675,10 +683,8 @@ def inverted_generational_distance(ideal_pareto_front, population,
     criteria_population = (criteria_population - norm_min) / denom
     criteria_pf = (criteria_pf - norm_min) / denom
 
-    # build KD-tree on population
     tree = cKDTree(criteria_population)
 
-    # query nearest neighbor distances for all PF points at once
     distances, _ = tree.query(criteria_pf, k=1)
 
     return distances.mean()
