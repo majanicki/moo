@@ -87,7 +87,7 @@ for _ in range(10):
     standard_data.append(c)
     steady_data.append(d)
 
-debug2d_animated_3way([steady_data[-1], island_data[-1], steady_data[-1]],stocks_expected_return, stocks_covariance)
+debug2d_animated_3way([steady_data[-1], island_data[-1], standard_data[-1]],stocks_expected_return, stocks_covariance)
 plt.figure(figsize=(10, 9))
 
 methods = [("dynamic", island_data), ("standard", standard_data), ("steady", steady_data)]

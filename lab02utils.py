@@ -505,7 +505,7 @@ def debug2d_animated_3way(
         fig,
         update,
         frames=len(all_evals),
-        interval=300,
+        interval=50,
         blit=False
     )
 
