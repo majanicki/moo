@@ -93,12 +93,18 @@ for pop in population_sizes:
 
         for _ in range(5):
             island_data.append(evolve_dynamic(pop, ev, stocks_expected_return, stocks_covariance, False))
+            print("Island 2D", ev, pop)
             standard_data.append(evolve(pop, ev, stocks_expected_return, stocks_covariance, False))
+            print("Standard 2D", ev, pop)
             steady_data.append(evolve_steady(pop, ev * 10, stocks_expected_return, stocks_covariance, False))
+            print("Steady 2D", ev, pop)
 
             island_data3d.append(evolve_dynamic(pop, ev, stocks_expected_return, stocks_covariance, True))
+            print("Island 3D", ev, pop)
             standard_data3d.append(evolve(pop, ev, stocks_expected_return, stocks_covariance, True))
+            print("Standard 3D", ev, pop)
             steady_data3d.append(evolve_steady(pop, ev * 10, stocks_expected_return, stocks_covariance, True))
+            print("Steady 3D", ev, pop)
 
 
         sens_island.append((pop, ev, island_data))

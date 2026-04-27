@@ -285,7 +285,6 @@ def evolve(pop_size, generations, stocks_expected_return, stocks_covariance, thr
         criteria = evaluate_f(population, stocks_expected_return, stocks_covariance)
         population, front, _ = ngsa2_sort(population, criteria)
         population = population[:pop_size]
-        print(g, criteria[front[0]])
         evals += len(offspring)
         population_history.append((evals, population))
 
@@ -339,7 +338,6 @@ def evolve_dynamic(pop_size, generations, stocks_expected_return, stocks_covaria
         population, front, _ = ngsa2_sort(population, criteria)
         population = population[:pop_size]
 
-        print(g, n_explore, n_exploit)
 
         evals += len(offspring)
         population_history.append((evals, population))
@@ -381,7 +379,6 @@ def evolve_island(pop_size, generations, stocks_expected_return, stocks_covarian
         population_exploit, front, _ = ngsa2_sort(population_exploit, criteria)
         population_exploit = population_exploit[:pop_size]
 
-        print(g)
         population_history_explore.append(population_explore.copy())
         population_history_exploit.append(population_exploit.copy())
         evals += len(offspring) * 2
@@ -408,7 +405,6 @@ def evolve_steady(pop_size, generations, stocks_expected_return, stocks_covarian
         criteria = criteria[order]
         population = population[:pop_size]
         criteria = criteria[:pop_size]
-        print("Stead",g)
         evals += len(offspring)
         population_history.append((evals, population))
 
