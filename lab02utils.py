@@ -306,11 +306,10 @@ def evolve_dynamic(pop_size, generations, stocks_expected_return, stocks_covaria
     base_children = int(pop_size * 0.25)
 
     for g in range(1, generations):
-
-        t = g / generations
+        t = (g - generations * 0.4)/ generations
 
         explore_ratio = max(0.1, 1.0 - t)
-        exploit_ratio = 1.0 - explore_ratio
+        explore_ratio = min(1.0, explore_ratio)
 
         n_explore = int(base_children * explore_ratio)
         n_exploit = base_children - n_explore
@@ -397,7 +396,10 @@ def evolve_steady(pop_size, generations, stocks_expected_return, stocks_covarian
     population_history = [(evals, population)]
     for g in range(1, generations):
 
-        offspring = selection_elite(population, 2)[1:]
+        if g < generations / 2:
+            offspring = selection_elite(population, 2)[1:]
+        else:
+            offspring = selection(population, int(pop_size * 0.2))
         c_offspring = evaluate_f(offspring, stocks_expected_return, stocks_covariance)
         population = np.vstack((population, offspring))
         criteria = np.vstack((criteria, c_offspring))
@@ -459,8 +461,7 @@ def debug2d_animated_3way(
             x = -criteria[:, 1]
             y = criteria[:, 0]
 
-            if evals % 2 == 0:
-                gen_data.append((x, y, evals, g))
+            gen_data.append((x, y, evals, g))
 
         gen_data_all.append(gen_data)
 
@@ -611,8 +612,7 @@ def debug3d_animated_side_by_side(
             y = criteria[:, 0]
             z = -criteria[:, 2]
 
-            if evals % 2 == 0:
-                gen_data.append((x, y, z, evals, g))
+            gen_data.append((x, y, z, evals, g))
 
         gen_data_all.append(gen_data)
 

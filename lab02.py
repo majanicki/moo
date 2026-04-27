@@ -96,14 +96,14 @@ for pop in population_sizes:
             print("Island 2D", ev, pop)
             standard_data.append(evolve(pop, ev, stocks_expected_return, stocks_covariance, False))
             print("Standard 2D", ev, pop)
-            steady_data.append(evolve_steady(pop, ev * 10, stocks_expected_return, stocks_covariance, False))
+            steady_data.append(evolve_steady(pop, (ev//2 * 10) + ev, stocks_expected_return, stocks_covariance, False))
             print("Steady 2D", ev, pop)
 
             island_data3d.append(evolve_dynamic(pop, ev, stocks_expected_return, stocks_covariance, True))
             print("Island 3D", ev, pop)
             standard_data3d.append(evolve(pop, ev, stocks_expected_return, stocks_covariance, True))
             print("Standard 3D", ev, pop)
-            steady_data3d.append(evolve_steady(pop, ev * 10, stocks_expected_return, stocks_covariance, True))
+            steady_data3d.append(evolve_steady(pop, (ev//2 * 10) + ev, stocks_expected_return, stocks_covariance, True))
             print("Steady 3D", ev, pop)
 
 
@@ -204,7 +204,7 @@ def visualize_sensitivity(populations, f, point, name):
         fmt=".3f",
         linewidths=0.5,
         linecolor="gray",
-        cbar_kws={"label": "Sensitivity (IGD)"}
+        cbar_kws={"label": "Sensitivity (HV)"}
     )
 
     ax.set_title(f"Sensitivity Analysis: {name}", fontsize=16, pad=15)
