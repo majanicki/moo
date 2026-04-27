@@ -11,6 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
 import numpy as np
 from scipy.spatial import cKDTree
+from pymoo.indicators.hv import HV
 
 def load_stock_data(filename):
     with open(filename, "r") as file:
@@ -485,8 +486,8 @@ def debug2d_animated_3way(
     for ax in axes:
         ax.set_xlim(all_x.min(), all_x.max())
         ax.set_ylim(all_y.min(), all_y.max())
-
-
+    
+    names = ("Steady", "Dynamic", "Standard")
     def update(frame):
         eval_target = all_evals[frame]
 
@@ -496,7 +497,7 @@ def debug2d_animated_3way(
 
             scat.set_offsets(np.c_[x, y])
             axes[i].set_title(
-                f"Run {i+1} | Gen {g} | Evals {evals}"
+                f"{names[i]} | Gen {g} | Evals {evals}"
             )
 
         return scatters
@@ -509,7 +510,7 @@ def debug2d_animated_3way(
         blit=False
     )
 
-    ani.save(save_path, writer="pillow", fps=4)
+    ani.save(save_path, writer="pillow", fps=5)
     plt.show()
 
 def debug3d(population_history, stocks_expected_return, stocks_covariance):
@@ -567,6 +568,99 @@ def debug3d(population_history, stocks_expected_return, stocks_covariance):
         anim.save(f"figs/pop_history_3d_view_{i}.gif", writer="pillow", fps=5)
         plt.close(fig)
 
+
+def debug3d_animated_side_by_side(
+    pop_histories,
+    stocks_expected_return,
+    stocks_covariance,
+    save_path="figs/pop_history_3d_side.gif"
+):
+    n = len(pop_histories)
+
+    fig = plt.figure(figsize=(6 * n, 6))
+    axes = [
+        fig.add_subplot(1, n, i + 1, projection='3d')
+        for i in range(n)
+    ]
+
+    elev = 20
+    azim = 315
+
+    for ax in axes:
+        ax.set_xlabel('Return')
+        ax.set_ylabel('Risk')
+        ax.set_zlabel('Significant weights')
+        ax.view_init(elev=elev, azim=azim)
+
+    scatters = [
+        ax.scatter([], [], [], s=20, alpha=0.7)
+        for ax in axes
+    ]
+
+    gen_data_all = []
+
+    for history in pop_histories:
+        gen_data = []
+
+        for g, population in enumerate(history):
+            evals, population = population
+
+            criteria = evaluate_population_3D(
+                population,
+                stocks_expected_return,
+                stocks_covariance
+            )
+
+            x = -criteria[:, 1]
+            y = criteria[:, 0]
+            z = -criteria[:, 2]
+
+            if evals % 2 == 0:
+                gen_data.append((x, y, z, evals, g))
+
+        gen_data_all.append(gen_data)
+
+    all_evals = sorted(set(
+        d[3]
+        for hist in gen_data_all
+        for d in hist
+    ))
+
+    def get_closest(history, target_eval):
+        return min(history, key=lambda d: abs(d[3] - target_eval))
+
+    all_x = np.concatenate([d[0] for hist in gen_data_all for d in hist])
+    all_y = np.concatenate([d[1] for hist in gen_data_all for d in hist])
+    all_z = np.concatenate([d[2] for hist in gen_data_all for d in hist])
+
+    for ax in axes:
+        ax.set_xlim(all_x.min(), all_x.max())
+        ax.set_ylim(all_y.min(), all_y.max())
+        ax.set_zlim(all_z.min(), all_z.max())
+    names = ("Steady", "Dynamic", "Standard")
+    def update(frame):
+        eval_target = all_evals[frame]
+
+        for i, (history, scat, ax) in enumerate(zip(gen_data_all, scatters, axes)):
+            x, y, z, evals, g = get_closest(history, eval_target)
+
+            scat._offsets3d = (x, y, z)
+            ax.set_title(f"{names[i]}\nGen {g} | Evals {evals}")
+
+        return scatters
+
+    ani = FuncAnimation(
+        fig,
+        update,
+        frames=len(all_evals),
+        interval=50,
+        blit=False
+    )
+
+    ani.save(save_path, writer="pillow", fps=5)
+    plt.close(fig)
+
+
 def inverted_generational_distance(ideal_pareto_front, population,
                                    stocks_expected_return, stocks_covariance):
 
@@ -594,18 +688,16 @@ def inverted_generational_distance(ideal_pareto_front, population,
     return distances.mean()
 
 
-def hypervolume(population, reference_point, stocks_expected_return, stocks_covariance):
-    criteria_population = evaluate_population(population, stocks_expected_return, stocks_covariance)
-    population, pareto_front, _ = ngsa2_sort(population, criteria_population)
-    criteria_population = criteria_population[pareto_front]
-    criteria_population = criteria_population[np.lexsort((criteria_population[:, 1], -criteria_population[:, 0]))]
-    
-    total_volume = 0
-    for y, x in criteria_population:
-        volume = (reference_point[0] - x) * (reference_point[1] - y)
-        reference_point = (reference_point[0], y)
-        total_volume += volume
-    return total_volume
+
+def hypervolume(population, ref_point, expected_return, covariance):
+    F = evaluate_population(population, expected_return, covariance)
+    hv = HV(ref_point=ref_point)
+    return hv(F)
+def hypervolume3d(population, ref_point, expected_return, covariance):
+    F = evaluate_population_3D(population, expected_return, covariance)
+    hv = HV(ref_point=ref_point)
+    return hv(F)
+
 
 # Corssover - poprawić
 # Dirichlet - udowodnić

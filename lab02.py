@@ -76,13 +76,10 @@ standard_data = []
 steady_data = []
 
 
-for _ in range(10):
+for _ in range(1):
     a = evolve_dynamic(50, 150, stocks_expected_return, stocks_covariance, False)
     c = evolve(50, 150, stocks_expected_return, stocks_covariance, False)
     d = evolve_steady(50, 1500, stocks_expected_return, stocks_covariance, False)
-
-    
-
     island_data.append(a)
     standard_data.append(c)
     steady_data.append(d)
@@ -101,9 +98,9 @@ for name, histories in methods:
         x.append(histories[0][i][0])
         hvs = []
         for history in histories:
-            hv = inverted_generational_distance(
-                ecm_solutions,
+            hv = hypervolume(
                 history[i][1],
+                (1.0, 0),
                 stocks_expected_return,
                 stocks_covariance
             )
@@ -120,9 +117,58 @@ for name, histories in methods:
 
 plt.ylabel("Hypervolume")
 plt.xlabel("Evaluation")
-plt.title(f"IGD for NSGA-II (2D case)")
+plt.title(f"Hypervolume for NSGA-II (2D case)")
 plt.legend()
-plt.savefig("figs/new_methods.png")
+plt.savefig("figs/hv_new_methods.png")
+plt.show()
+
+island_data3d = []
+standard_data3d = []
+steady_data3d = []
+
+
+for _ in range(1):
+    a = evolve_dynamic(50, 10, stocks_expected_return, stocks_covariance, True)
+    c = evolve(50, 10, stocks_expected_return, stocks_covariance, True)
+    d = evolve_steady(50, 100, stocks_expected_return, stocks_covariance, True)
+    island_data3d.append(a)
+    standard_data3d.append(c)
+    steady_data3d.append(d)
+
+debug3d_animated_side_by_side([steady_data3d[-1], island_data3d[-1], standard_data3d[-1]], stocks_expected_return, stocks_covariance)
+methods = [("dynamic", island_data3d), ("standard", standard_data3d), ("steady", steady_data3d)]
+for name, histories in methods:
+    x = []
+    y = []
+    stds = []
+
+    num_gens = len(histories[0])  # assume all runs same length
+    for i in range(num_gens):
+        x.append(histories[0][i][0])
+        hvs = []
+        for history in histories:
+            hv = hypervolume3d(
+                history[i][1],
+                (1.0, 0, 0),
+                stocks_expected_return,
+                stocks_covariance
+            )
+            hvs.append(hv)
+
+        y.append(np.mean(hvs))
+        stds.append(np.std(hvs))
+
+    y = np.array(y)
+    stds = np.array(stds)
+
+    plt.plot(x, y, label=f"pop={name}")
+    plt.fill_between(x, y - stds, y + stds, alpha=0.2)
+
+plt.ylabel("Hypervolume")
+plt.xlabel("Evaluation")
+plt.title(f"Hypervolume for NSGA-II (3D case)")
+plt.legend()
+plt.savefig("figs/hv_new_methods3D.png")
 plt.show()
 
 # pop_sizes = [20, 30, 40, 50]
