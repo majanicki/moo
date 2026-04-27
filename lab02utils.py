@@ -408,7 +408,7 @@ def evolve_steady(pop_size, generations, stocks_expected_return, stocks_covarian
         criteria = criteria[order]
         population = population[:pop_size]
         criteria = criteria[:pop_size]
-        print(g, criteria[front[0]])
+        print("Stead",g)
         evals += len(offspring)
         population_history.append((evals, population))
 

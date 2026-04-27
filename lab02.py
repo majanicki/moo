@@ -71,34 +71,52 @@ for i in range(n_samples):
     ecm_y_risks.append(risk)
     ecm_solutions.append(w)
 
+sens_island = []
+sens_standard = []
+sens_steady = []
+
+sens_island3d = []
+sens_standard3d = []
+sens_steady3d = []
+population_sizes = [20, 30, 50]
+evaluation_numbers = [50, 80, 120]
+for pop in population_sizes:
+    for ev in evaluation_numbers:
+        island_data = []
+        standard_data = []
+        steady_data = []
+
+        island_data3d = []
+        standard_data3d = []
+        steady_data3d = []
 
 
-island_data = []
-standard_data = []
-steady_data = []
+        for _ in range(5):
+            island_data.append(evolve_dynamic(pop, ev, stocks_expected_return, stocks_covariance, False))
+            standard_data.append(evolve(pop, ev, stocks_expected_return, stocks_covariance, False))
+            steady_data.append(evolve_steady(pop, ev * 10, stocks_expected_return, stocks_covariance, False))
 
-island_data3d = []
-standard_data3d = []
-steady_data3d = []
+            island_data3d.append(evolve_dynamic(pop, ev, stocks_expected_return, stocks_covariance, True))
+            standard_data3d.append(evolve(pop, ev, stocks_expected_return, stocks_covariance, True))
+            steady_data3d.append(evolve_steady(pop, ev * 10, stocks_expected_return, stocks_covariance, True))
 
 
-for _ in range(1):
-    island_data.append(evolve_dynamic(50, 15, stocks_expected_return, stocks_covariance, False))
-    standard_data.append(evolve(50, 15, stocks_expected_return, stocks_covariance, False))
-    steady_data.append(evolve_steady(50, 15, stocks_expected_return, stocks_covariance, False))
+        sens_island.append((pop, ev, island_data))
+        sens_standard.append((pop, ev, standard_data))
+        sens_steady.append((pop, ev, steady_data))
 
-    island_data3d.append(evolve_dynamic(50, 15, stocks_expected_return, stocks_covariance, True))
-    standard_data3d.append(evolve(50, 15, stocks_expected_return, stocks_covariance, True))
-    steady_data3d.append(evolve_steady(50, 15, stocks_expected_return, stocks_covariance, True))
+        sens_island3d.append((pop, ev, island_data3d))
+        sens_standard3d.append((pop, ev, standard_data3d))
+        sens_steady3d.append((pop, ev, steady_data3d))
 
 debug2d_animated_3way(
-    [steady_data[-1], island_data[-1], standard_data[-1]],
+    [sens_steady[-1][2][-1], sens_island[-1][2][-1], sens_standard[-1][2][-1]],
     stocks_expected_return,
     stocks_covariance
 )
 
 debug3d_animated_side_by_side(
-    [steady_data3d[-1], island_data3d[-1], standard_data3d[-1]],
+    [sens_steady3d[-1][2][-1], sens_island3d[-1][2][-1], sens_standard3d[-1][2][-1]],
     stocks_expected_return,
     stocks_covariance
 )
@@ -145,14 +163,14 @@ def plot_hv(histories_map, hv_fn, ref_point, title, save_path):
     plt.savefig(save_path)
     plt.show()
 
-def visualize_sensitivity(populations, pareto_front, name):
+def visualize_sensitivity(populations, f, point, name):
     records = []
 
     for pop_size, gen_size, pops in populations:
         c = [
-            inverted_generational_distance(
-                pareto_front,
-                p[-1],
+            f(
+                p[-1][1],
+                point,
                 stocks_expected_return,
                 stocks_covariance
             )
@@ -162,13 +180,13 @@ def visualize_sensitivity(populations, pareto_front, name):
         records.append({
             "Population": pop_size,
             "Generations": gen_size,
-            "IGD": np.mean(c)
+            "HV": np.mean(c)
         })
 
     df = pd.DataFrame(records)
 
     # Pivot into grid
-    pivot = df.pivot(index="Generations", columns="Population", values="IGD")
+    pivot = df.pivot(index="Generations", columns="Population", values="HV")
 
     plt.figure(figsize=(10, 8))
     sns.set_theme(style="whitegrid", font_scale=1.2)
@@ -188,14 +206,23 @@ def visualize_sensitivity(populations, pareto_front, name):
     ax.set_ylabel("Generation Size")
 
     plt.tight_layout()
-    plt.savefig(f"figs/sensitivity_{name}.png", dpi=300)
+    plt.savefig(f"figs/new_sensitivity_{name}.png", dpi=300)
     plt.show()
+
+visualize_sensitivity(sens_island,  hypervolume, (1.0, 0), "dynamic")
+visualize_sensitivity(sens_steady,  hypervolume, (1.0, 0), "steady")
+visualize_sensitivity(sens_standard,  hypervolume, (1.0, 0), "standard")
+
+visualize_sensitivity(sens_island3d,  hypervolume3d, (1.0, 0, 0), "dynamic3d")
+visualize_sensitivity(sens_steady3d,  hypervolume3d, (1.0, 0, 0), "steady3d")
+visualize_sensitivity(sens_standard3d,  hypervolume3d, (1.0, 0, 0), "standard3d")
+
 
 plot_hv(
     {
-        "dynamic": island_data,
-        "standard": standard_data,
-        "steady": steady_data,
+        "dynamic": sens_island[-1][2],
+        "standard": sens_standard[-1][2],
+        "steady": sens_steady[-1][2],
     },
     hypervolume,
     (1.0, 0),
@@ -204,15 +231,16 @@ plot_hv(
 )
 plot_hv(
     {
-        "dynamic": island_data3d,
-        "standard": standard_data3d,
-        "steady": steady_data3d,
+        "dynamic": sens_island3d[-1][2],
+        "standard": sens_standard3d[-1][2],
+        "steady": sens_steady3d[-1][2],
     },
     hypervolume3d,
     (1.0, 0, 0),
     "Hypervolume for NSGA-II (3D case)",
     "figs/hv_new_methods3D.png"
 )
+
 # pop_sizes = [20, 30, 40, 50]
 # gen_sizes = [100, 150, 200]
 # n_repeats = 10
