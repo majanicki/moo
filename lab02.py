@@ -71,56 +71,11 @@ for i in range(n_samples):
     ecm_y_risks.append(risk)
     ecm_solutions.append(w)
 
+
+
 island_data = []
 standard_data = []
 steady_data = []
-
-
-for _ in range(1):
-    a = evolve_dynamic(50, 150, stocks_expected_return, stocks_covariance, False)
-    c = evolve(50, 150, stocks_expected_return, stocks_covariance, False)
-    d = evolve_steady(50, 1500, stocks_expected_return, stocks_covariance, False)
-    island_data.append(a)
-    standard_data.append(c)
-    steady_data.append(d)
-
-debug2d_animated_3way([steady_data[-1], island_data[-1], standard_data[-1]],stocks_expected_return, stocks_covariance)
-plt.figure(figsize=(10, 9))
-
-methods = [("dynamic", island_data), ("standard", standard_data), ("steady", steady_data)]
-for name, histories in methods:
-    x = []
-    y = []
-    stds = []
-
-    num_gens = len(histories[0])  # assume all runs same length
-    for i in range(num_gens):
-        x.append(histories[0][i][0])
-        hvs = []
-        for history in histories:
-            hv = hypervolume(
-                history[i][1],
-                (1.0, 0),
-                stocks_expected_return,
-                stocks_covariance
-            )
-            hvs.append(hv)
-
-        y.append(np.mean(hvs))
-        stds.append(np.std(hvs))
-
-    y = np.array(y)
-    stds = np.array(stds)
-
-    plt.plot(x, y, label=f"pop={name}")
-    plt.fill_between(x, y - stds, y + stds, alpha=0.2)
-
-plt.ylabel("Hypervolume")
-plt.xlabel("Evaluation")
-plt.title(f"Hypervolume for NSGA-II (2D case)")
-plt.legend()
-plt.savefig("figs/hv_new_methods.png")
-plt.show()
 
 island_data3d = []
 standard_data3d = []
@@ -128,49 +83,136 @@ steady_data3d = []
 
 
 for _ in range(1):
-    a = evolve_dynamic(50, 10, stocks_expected_return, stocks_covariance, True)
-    c = evolve(50, 10, stocks_expected_return, stocks_covariance, True)
-    d = evolve_steady(50, 100, stocks_expected_return, stocks_covariance, True)
-    island_data3d.append(a)
-    standard_data3d.append(c)
-    steady_data3d.append(d)
+    island_data.append(evolve_dynamic(50, 15, stocks_expected_return, stocks_covariance, False))
+    standard_data.append(evolve(50, 15, stocks_expected_return, stocks_covariance, False))
+    steady_data.append(evolve_steady(50, 15, stocks_expected_return, stocks_covariance, False))
 
-debug3d_animated_side_by_side([steady_data3d[-1], island_data3d[-1], standard_data3d[-1]], stocks_expected_return, stocks_covariance)
-methods = [("dynamic", island_data3d), ("standard", standard_data3d), ("steady", steady_data3d)]
-for name, histories in methods:
-    x = []
-    y = []
-    stds = []
+    island_data3d.append(evolve_dynamic(50, 15, stocks_expected_return, stocks_covariance, True))
+    standard_data3d.append(evolve(50, 15, stocks_expected_return, stocks_covariance, True))
+    steady_data3d.append(evolve_steady(50, 15, stocks_expected_return, stocks_covariance, True))
 
-    num_gens = len(histories[0])  # assume all runs same length
-    for i in range(num_gens):
-        x.append(histories[0][i][0])
-        hvs = []
-        for history in histories:
-            hv = hypervolume3d(
-                history[i][1],
-                (1.0, 0, 0),
+debug2d_animated_3way(
+    [steady_data[-1], island_data[-1], standard_data[-1]],
+    stocks_expected_return,
+    stocks_covariance
+)
+
+debug3d_animated_side_by_side(
+    [steady_data3d[-1], island_data3d[-1], standard_data3d[-1]],
+    stocks_expected_return,
+    stocks_covariance
+)
+
+def plot_hv(histories_map, hv_fn, ref_point, title, save_path):
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(10, 9))
+
+    for name in ["dynamic", "standard", "steady"]:
+        histories = histories_map[name]
+
+        x, y, stds = [], [], []
+        num_gens = len(histories[0])
+
+        for i in range(num_gens):
+            x.append(histories[0][i][0])
+
+            hvs = [
+                hv_fn(
+                    history[i][1],
+                    ref_point,
+                    stocks_expected_return,
+                    stocks_covariance
+                )
+                for history in histories
+            ]
+
+            y.append(np.mean(hvs))
+            stds.append(np.std(hvs))
+
+        x = np.array(x)
+        y = np.array(y)
+        stds = np.array(stds)
+
+        plt.plot(x, y, label=f"pop={name}")
+        plt.fill_between(x, y - stds, y + stds, alpha=0.2)
+
+    plt.ylabel("Hypervolume")
+    plt.xlabel("Evaluation")
+    plt.title(title)
+    plt.legend()
+    plt.savefig(save_path)
+    plt.show()
+
+def visualize_sensitivity(populations, pareto_front, name):
+    records = []
+
+    for pop_size, gen_size, pops in populations:
+        c = [
+            inverted_generational_distance(
+                pareto_front,
+                p[-1],
                 stocks_expected_return,
                 stocks_covariance
             )
-            hvs.append(hv)
+            for p in pops
+        ]
 
-        y.append(np.mean(hvs))
-        stds.append(np.std(hvs))
+        records.append({
+            "Population": pop_size,
+            "Generations": gen_size,
+            "IGD": np.mean(c)
+        })
 
-    y = np.array(y)
-    stds = np.array(stds)
+    df = pd.DataFrame(records)
 
-    plt.plot(x, y, label=f"pop={name}")
-    plt.fill_between(x, y - stds, y + stds, alpha=0.2)
+    # Pivot into grid
+    pivot = df.pivot(index="Generations", columns="Population", values="IGD")
 
-plt.ylabel("Hypervolume")
-plt.xlabel("Evaluation")
-plt.title(f"Hypervolume for NSGA-II (3D case)")
-plt.legend()
-plt.savefig("figs/hv_new_methods3D.png")
-plt.show()
+    plt.figure(figsize=(10, 8))
+    sns.set_theme(style="whitegrid", font_scale=1.2)
 
+    ax = sns.heatmap(
+        pivot,
+        cmap="viridis",
+        annot=True,          # show values
+        fmt=".3f",
+        linewidths=0.5,
+        linecolor="gray",
+        cbar_kws={"label": "Sensitivity (IGD)"}
+    )
+
+    ax.set_title(f"Sensitivity Analysis: {name}", fontsize=16, pad=15)
+    ax.set_xlabel("Population Size")
+    ax.set_ylabel("Generation Size")
+
+    plt.tight_layout()
+    plt.savefig(f"figs/sensitivity_{name}.png", dpi=300)
+    plt.show()
+
+plot_hv(
+    {
+        "dynamic": island_data,
+        "standard": standard_data,
+        "steady": steady_data,
+    },
+    hypervolume,
+    (1.0, 0),
+    "Hypervolume for NSGA-II (2D case)",
+    "figs/hv_new_methods.png"
+)
+plot_hv(
+    {
+        "dynamic": island_data3d,
+        "standard": standard_data3d,
+        "steady": steady_data3d,
+    },
+    hypervolume3d,
+    (1.0, 0, 0),
+    "Hypervolume for NSGA-II (3D case)",
+    "figs/hv_new_methods3D.png"
+)
 # pop_sizes = [20, 30, 40, 50]
 # gen_sizes = [100, 150, 200]
 # n_repeats = 10
@@ -196,51 +238,7 @@ plt.show()
 #         populations_3d.append((pop_size, gen_size,pops))
 
 
-# def visualize_sensitivity(populations, pareto_front, name):
-#     records = []
 
-#     for pop_size, gen_size, pops in populations:
-#         c = [
-#             inverted_generational_distance(
-#                 pareto_front,
-#                 p[-1],
-#                 stocks_expected_return,
-#                 stocks_covariance
-#             )
-#             for p in pops
-#         ]
-
-#         records.append({
-#             "Population": pop_size,
-#             "Generations": gen_size,
-#             "IGD": np.mean(c)
-#         })
-
-#     df = pd.DataFrame(records)
-
-#     # Pivot into grid
-#     pivot = df.pivot(index="Generations", columns="Population", values="IGD")
-
-#     plt.figure(figsize=(10, 8))
-#     sns.set_theme(style="whitegrid", font_scale=1.2)
-
-#     ax = sns.heatmap(
-#         pivot,
-#         cmap="viridis",
-#         annot=True,          # show values
-#         fmt=".3f",
-#         linewidths=0.5,
-#         linecolor="gray",
-#         cbar_kws={"label": "Sensitivity (IGD)"}
-#     )
-
-#     ax.set_title(f"Sensitivity Analysis: {name}", fontsize=16, pad=15)
-#     ax.set_xlabel("Population Size")
-#     ax.set_ylabel("Generation Size")
-
-#     plt.tight_layout()
-#     plt.savefig(f"figs/sensitivity_{name}.png", dpi=300)
-#     plt.show()
 
 # visualize_sensitivity(populations_3d, ideal_pareto_front_3d, "3D")
 # visualize_sensitivity(populations_2d, ideal_pareto_front_2d, "2D")
